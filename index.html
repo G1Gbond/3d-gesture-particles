@@ -423,8 +423,10 @@ function detectTwoHandHeartGesture(leftHand, rightHand) {
     Math.pow(leftThumbTipScreen.y - rightThumbTipScreen.y, 2)
   );
 
-  // 放宽距离条件：食指距离 < 150px，拇指距离 < 150px
-  const handsClose = indexDistance < 150 && thumbDistance < 150;
+  // 动态距离阈值：屏幕宽度的 8%
+  // 电脑 1920px → ~153px，手机 375px → ~30px
+  const distanceThreshold = window.innerWidth * 0.08;
+  const handsClose = indexDistance < distanceThreshold && thumbDistance < distanceThreshold;
 
   // 检查食指是否在上方，拇指是否在下方
   const indexAboveThumb = leftIndexTipScreen.y < leftThumbTipScreen.y &&
