@@ -56,7 +56,8 @@
   @keyframes successPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 
   /* Detecting indicator */
-  #detecting{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:55;font-size:16px;color:rgba(255,255,255,0.8);opacity:0;transition:opacity 0.3s;pointer-events:none;text-shadow:0 0 20px rgba(255,77,106,0.5)}
+  #detecting{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:55;font-size:20px;color:rgba(255,255,255,0.9);opacity:0;transition:opacity 0.3s;pointer-events:none;text-shadow:0 0 30px rgba(255,77,106,0.8);animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.1)}}
 </style>
 </head>
 <body>
@@ -345,9 +346,9 @@ function onHandResults(results) {
       }
 
       // 计算进度
-      if (LOGIN_STATE.heartTrailPoints.length > 10) {
-        // 双手比心进度直接增加
-        LOGIN_STATE.progress = Math.min(LOGIN_STATE.progress + 0.03, 1.0);
+      if (LOGIN_STATE.heartTrailPoints.length > 5) {
+        // 双手比心进度直接增加（加快速度）
+        LOGIN_STATE.progress = Math.min(LOGIN_STATE.progress + 0.05, 1.0);
         updateProgressRing();
 
         if (LOGIN_STATE.progress >= 1.0) {
@@ -386,17 +387,11 @@ function detectTwoHandHeartGesture(leftHand, rightHand) {
   const PINKY_TIP = 20;
   const PINKY_MCP = 17;
 
-  // 检查左手手指状态
+  // 检查左手手指状态（放宽条件：只要求食指伸直）
   const leftIndexExtended = leftHand[INDEX_TIP].y < leftHand[INDEX_MCP].y;
-  const leftMiddleCurled = leftHand[MIDDLE_TIP].y > leftHand[MIDDLE_MCP].y;
-  const leftRingCurled = leftHand[RING_TIP].y > leftHand[RING_MCP].y;
-  const leftPinkyCurled = leftHand[PINKY_TIP].y > leftHand[PINKY_MCP].y;
 
-  // 检查右手手指状态
+  // 检查右手手指状态（放宽条件：只要求食指伸直）
   const rightIndexExtended = rightHand[INDEX_TIP].y < rightHand[INDEX_MCP].y;
-  const rightMiddleCurled = rightHand[MIDDLE_TIP].y > rightHand[MIDDLE_MCP].y;
-  const rightRingCurled = rightHand[RING_TIP].y > rightHand[RING_MCP].y;
-  const rightPinkyCurled = rightHand[PINKY_TIP].y > rightHand[PINKY_MCP].y;
 
   // 检查双手食指是否在顶部接触
   const leftIndexTipScreen = {
@@ -428,17 +423,14 @@ function detectTwoHandHeartGesture(leftHand, rightHand) {
     Math.pow(leftThumbTipScreen.y - rightThumbTipScreen.y, 2)
   );
 
-  // 综合判断
-  const fingersCorrect = leftIndexExtended && leftMiddleCurled && leftRingCurled && leftPinkyCurled &&
-                         rightIndexExtended && rightMiddleCurled && rightRingCurled && rightPinkyCurled;
-
-  const handsClose = indexDistance < 120 && thumbDistance < 120;
+  // 放宽距离条件：食指距离 < 150px，拇指距离 < 150px
+  const handsClose = indexDistance < 150 && thumbDistance < 150;
 
   // 检查食指是否在上方，拇指是否在下方
   const indexAboveThumb = leftIndexTipScreen.y < leftThumbTipScreen.y &&
                           rightIndexTipScreen.y < rightThumbTipScreen.y;
 
-  return fingersCorrect && handsClose && indexAboveThumb;
+  return leftIndexExtended && rightIndexExtended && handsClose && indexAboveThumb;
 }
 
 function updateProgressRing() {
