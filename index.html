@@ -17,9 +17,15 @@
   #camera-off{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:13px;color:rgba(255,255,255,0.4)}
 
   /* Control panel */
-  #panel{position:fixed;top:20px;left:20px;width:260px;z-index:100;background:rgba(18,18,28,0.75);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,0.3);transition:opacity 0.3s}
-  #panel h2{font-size:15px;font-weight:600;margin-bottom:18px;letter-spacing:0.5px;display:flex;align-items:center;gap:8px}
+  #panel{position:fixed;top:20px;left:20px;width:260px;z-index:100;background:rgba(18,18,28,0.75);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,0.3);transition:all 0.4s cubic-bezier(0.4,0,0.2,1);overflow:hidden}
+  #panel.collapsed{width:260px;padding:16px 24px}
+  #panel h2{font-size:15px;font-weight:600;margin-bottom:0;letter-spacing:0.5px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;transition:margin-bottom 0.4s cubic-bezier(0.4,0,0.2,1)}
+  #panel:not(.collapsed) h2{margin-bottom:18px}
   #panel h2 span{font-size:18px}
+  #panel-toggle{margin-left:auto;font-size:14px;transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);color:rgba(255,255,255,0.5)}
+  #panel.collapsed #panel-toggle{transform:rotate(-90deg)}
+  #panel-body{max-height:600px;opacity:1;transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.3s ease}
+  #panel.collapsed #panel-body{max-height:0;opacity:0;pointer-events:none}
 
   .section-label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:10px;margin-top:18px}
   .section-label:first-of-type{margin-top:0}
@@ -79,8 +85,8 @@
 
 <!-- Control Panel -->
 <div id="panel">
-  <h2><span>✦</span> 粒子系统</h2>
-
+  <h2 id="panel-header"><span>✦</span> 粒子系统 <span id="panel-toggle">▼</span></h2>
+  <div id="panel-body">
   <div class="section-label">粒子模型</div>
   <div class="model-grid">
     <button class="model-btn active" data-model="heart"><span class="icon">♥</span>爱心</button>
@@ -119,6 +125,7 @@
     <span id="gesture-text">手势检测未开启</span>
   </div>
   <div class="gesture-values" id="gesture-values"></div>
+  </div>
 </div>
 
 <!-- Fullscreen Button -->
@@ -143,9 +150,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.min.js"></script>
 
 <script>
-// ============================================================
-//  Global State
-// ============================================================
 const STATE = {
   model: 'heart',
   color: new THREE.Color('#ff4d6a'),
@@ -161,9 +165,6 @@ const STATE = {
   time: 0,
 };
 
-// ============================================================
-//  Three.js Setup
-// ============================================================
 const canvas = document.getElementById('three-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -174,20 +175,15 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 0, 28);
 
-// ============================================================
-//  Particle System
-// ============================================================
 let geometry, material, points;
 let basePositions = [];
 let targetPositions = [];
 
-// Heart shape: parametric equation
 function generateHeart(count) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   for (let i = 0; i < count; i++) {
     const t = (i / count) * Math.PI * 2;
-    // Add some randomness for thickness
     const r = 0.8 + Math.random() * 0.4;
     const x = 16 * Math.pow(Math.sin(t), 3) * r;
     const y = (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) * r;
@@ -195,7 +191,6 @@ function generateHeart(count) {
     positions[i*3] = x * 0.15;
     positions[i*3+1] = y * 0.15 - 0.5;
     positions[i*3+2] = z;
-    // Slight color variation
     const c = STATE.color;
     colors[i*3] = c.r + (Math.random()-0.5)*0.1;
     colors[i*3+1] = c.g + (Math.random()-0.5)*0.1;
@@ -204,7 +199,6 @@ function generateHeart(count) {
   return { positions, colors };
 }
 
-// Flower shape: rose curve + center
 function generateFlower(count) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
@@ -213,14 +207,12 @@ function generateFlower(count) {
   for (let i = 0; i < count; i++) {
     let x, y, z;
     if (Math.random() < centerRatio) {
-      // Flower center
       const a = Math.random() * Math.PI * 2;
       const r = Math.random() * 2;
       x = Math.cos(a) * r;
       y = Math.sin(a) * r;
       z = (Math.random() - 0.5) * 1.5;
     } else {
-      // Petals
       const petal = Math.floor(Math.random() * petalCount);
       const angle = (petal / petalCount) * Math.PI * 2;
       const t = (Math.random() - 0.5) * 1.2;
@@ -244,7 +236,6 @@ function generateFlower(count) {
   return { positions, colors };
 }
 
-// Firework: sphere bursts with trails
 function generateFirework(count) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
@@ -255,7 +246,6 @@ function generateFirework(count) {
     const burstR = 3 + burst * 1.5;
     const burstX = Math.cos(burstAngle) * burstR;
     const burstY = Math.sin(burstAngle) * burstR + 2;
-    // Spherical distribution from burst center
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
     const r = Math.pow(Math.random(), 0.5) * 5;
@@ -265,7 +255,6 @@ function generateFirework(count) {
     positions[i*3] = (burstX + sx) * 0.25;
     positions[i*3+1] = (burstY + sy) * 0.25;
     positions[i*3+2] = sz * 0.25;
-    // Gradient color from center
     const dist = r / 5;
     const c = STATE.color;
     colors[i*3] = c.r * (1 - dist*0.3) + (Math.random()-0.5)*0.15;
@@ -299,7 +288,6 @@ function initParticles() {
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
 
-  // Add random sizes for variation
   const sizes = new Float32Array(count);
   for (let i = 0; i < count; i++) {
     sizes[i] = 0.5 + Math.random() * 1.0;
@@ -324,7 +312,6 @@ function initParticles() {
       void main() {
         vColor = color;
         vec3 pos = position;
-        // Subtle floating animation
         pos.x += sin(uTime * 0.5 + position.y * 2.0) * 0.08;
         pos.y += cos(uTime * 0.4 + position.x * 2.0) * 0.08;
         pos.z += sin(uTime * 0.3 + position.z * 2.0) * 0.05;
@@ -334,7 +321,6 @@ function initParticles() {
         gl_PointSize = uBaseSize * aSize * uScale * (15.0 / max(dist, 1.0));
         gl_Position = projectionMatrix * mvPosition;
 
-        // Fade based on distance
         vAlpha = smoothstep(50.0, 5.0, dist) * (0.7 + 0.3 * aSize);
       }
     `,
@@ -345,7 +331,6 @@ function initParticles() {
       void main() {
         float d = length(gl_PointCoord - vec2(0.5));
         if (d > 0.5) discard;
-        // Soft glow
         float alpha = smoothstep(0.5, 0.1, d) * vAlpha;
         gl_FragColor = vec4(vColor, alpha);
       }
@@ -362,16 +347,11 @@ function initParticles() {
 
 initParticles();
 
-// ============================================================
-//  Update particles based on gesture
-// ============================================================
 function updateParticlesFromGesture() {
   if (!geometry) return;
   const posAttr = geometry.getAttribute('position');
-  const colAttr = geometry.getAttribute('color');
   const count = posAttr.count;
 
-  // Smooth interpolation
   STATE.scale += (STATE.targetScale - STATE.scale) * 0.08;
   STATE.diffusion += (STATE.targetDiffusion - STATE.diffusion) * 0.08;
 
@@ -380,28 +360,15 @@ function updateParticlesFromGesture() {
     const by = basePositions[i*3+1];
     const bz = basePositions[i*3+2];
 
-    // Scale
-    let x = bx * STATE.scale;
-    let y = by * STATE.scale;
-    let z = bz * STATE.scale;
-
-    // Diffusion: push particles outward
     const len = Math.sqrt(bx*bx + by*by + bz*bz) || 0.01;
     const diffusionFactor = 1 + STATE.diffusion * 2;
-    x = (bx / len) * len * diffusionFactor * STATE.scale + (Math.random()-0.5) * STATE.diffusion * 0.5;
-    y = (by / len) * len * diffusionFactor * STATE.scale + (Math.random()-0.5) * STATE.diffusion * 0.5;
-    z = (bz / len) * len * diffusionFactor * STATE.scale + (Math.random()-0.5) * STATE.diffusion * 0.3;
-
-    posAttr.array[i*3] = x;
-    posAttr.array[i*3+1] = y;
-    posAttr.array[i*3+2] = z;
+    posAttr.array[i*3] = (bx / len) * len * diffusionFactor * STATE.scale + (Math.random()-0.5) * STATE.diffusion * 0.5;
+    posAttr.array[i*3+1] = (by / len) * len * diffusionFactor * STATE.scale + (Math.random()-0.5) * STATE.diffusion * 0.5;
+    posAttr.array[i*3+2] = (bz / len) * len * diffusionFactor * STATE.scale + (Math.random()-0.5) * STATE.diffusion * 0.3;
   }
   posAttr.needsUpdate = true;
 }
 
-// ============================================================
-//  MediaPipe Hands Setup
-// ============================================================
 let hands = null;
 let mpCamera = null;
 const videoElement = document.getElementById('camera-video');
@@ -431,27 +398,22 @@ function onHandResults(results) {
     const landmarks = results.multiHandLandmarks[0];
     STATE.handDetected = true;
 
-    // Draw hand skeleton
     drawConnectors(overlayCtx, landmarks, HAND_CONNECTIONS, { color: 'rgba(120,90,255,0.6)', lineWidth: 2 });
     drawLandmarks(overlayCtx, landmarks, { color: '#785aff', lineWidth: 1, radius: 3 });
 
-    // Thumb tip (4) and index finger tip (8)
     const thumb = landmarks[4];
     const index = landmarks[8];
     const middle = landmarks[12];
     const ring = landmarks[16];
     const pinky = landmarks[20];
-    const wrist = landmarks[0];
-    const palmCenter = landmarks[9]; // middle finger MCP
+    const palmCenter = landmarks[9];
 
-    // Pinch distance (thumb to index)
     const pinchDist = Math.sqrt(
       (thumb.x - index.x)**2 +
       (thumb.y - index.y)**2 +
       (thumb.z - index.z)**2
     );
 
-    // Palm openness: average distance of fingertips to palm center
     const fingertips = [thumb, index, middle, ring, pinky];
     let avgDist = 0;
     for (const tip of fingertips) {
@@ -462,15 +424,9 @@ function onHandResults(results) {
     }
     avgDist /= 5;
 
-    // Map pinch to scale (closer = smaller, farther = bigger)
-    const targetScale = THREE.MathUtils.clamp(THREE.MathUtils.mapLinear(pinchDist, 0.02, 0.25, 0.3, 2.5), 0.3, 2.5);
-    STATE.targetScale = targetScale;
+    STATE.targetScale = THREE.MathUtils.clamp(THREE.MathUtils.mapLinear(pinchDist, 0.02, 0.25, 0.3, 2.5), 0.3, 2.5);
+    STATE.targetDiffusion = THREE.MathUtils.clamp(THREE.MathUtils.mapLinear(avgDist, 0.05, 0.18, 0, 1.5), 0, 1.5);
 
-    // Map palm openness to diffusion
-    const targetDiffusion = THREE.MathUtils.clamp(THREE.MathUtils.mapLinear(avgDist, 0.05, 0.18, 0, 1.5), 0, 1.5);
-    STATE.targetDiffusion = targetDiffusion;
-
-    // Update UI
     document.getElementById('gesture-dot').className = 'gesture-dot active';
     document.getElementById('gesture-text').textContent = '手势检测中';
     document.getElementById('gesture-values').textContent =
@@ -525,9 +481,10 @@ function stopCamera() {
   document.getElementById('gesture-values').textContent = '';
 }
 
-// ============================================================
-//  UI Event Handlers
-// ============================================================
+// Panel toggle
+document.getElementById('panel-header').addEventListener('click', () => {
+  document.getElementById('panel').classList.toggle('collapsed');
+});
 
 // Model buttons
 document.querySelectorAll('.model-btn').forEach(btn => {
@@ -570,7 +527,6 @@ function updateParticleColors() {
   if (material) material.uniforms.uColor.value.copy(STATE.color);
 }
 
-// Sliders
 document.getElementById('particle-size').addEventListener('input', (e) => {
   STATE.particleSize = parseFloat(e.target.value);
   document.getElementById('size-val').textContent = STATE.particleSize.toFixed(1);
@@ -588,13 +544,11 @@ document.getElementById('rotate-speed').addEventListener('input', (e) => {
   document.getElementById('rotate-val').textContent = STATE.rotateSpeed.toFixed(2);
 });
 
-// Camera toggle
 document.getElementById('camera-toggle').addEventListener('click', () => {
   if (STATE.cameraActive) stopCamera();
   else startCamera();
 });
 
-// Fullscreen
 document.getElementById('fullscreen-btn').addEventListener('click', () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(()=>{});
@@ -603,21 +557,16 @@ document.getElementById('fullscreen-btn').addEventListener('click', () => {
   }
 });
 
-// Window resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// ============================================================
-//  Animation Loop
-// ============================================================
 function animate() {
   requestAnimationFrame(animate);
   STATE.time += 0.016;
 
-  // Rotate particles
   if (points) {
     points.rotation.y += STATE.rotateSpeed * 0.01;
     points.rotation.x = Math.sin(STATE.time * 0.1) * 0.1;
@@ -629,9 +578,6 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// ============================================================
-//  Init
-// ============================================================
 window.addEventListener('load', () => {
   setTimeout(() => {
     document.getElementById('loading').classList.add('hide');
