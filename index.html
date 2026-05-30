@@ -17,9 +17,15 @@
   #camera-off{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:13px;color:rgba(255,255,255,0.4)}
 
   /* Control panel */
-  #panel{position:fixed;top:20px;left:20px;width:260px;z-index:100;background:rgba(18,18,28,0.75);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,0.3);transition:opacity 0.3s}
-  #panel h2{font-size:15px;font-weight:600;margin-bottom:18px;letter-spacing:0.5px;display:flex;align-items:center;gap:8px}
+  #panel{position:fixed;top:20px;left:20px;width:260px;z-index:100;background:rgba(18,18,28,0.75);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,0.3);transition:all 0.4s cubic-bezier(0.4,0,0.2,1);overflow:hidden}
+  #panel.collapsed{width:260px;padding:16px 24px}
+  #panel h2{font-size:15px;font-weight:600;margin-bottom:0;letter-spacing:0.5px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;transition:margin-bottom 0.4s cubic-bezier(0.4,0,0.2,1)}
+  #panel:not(.collapsed) h2{margin-bottom:18px}
   #panel h2 span{font-size:18px}
+  #panel-toggle{margin-left:auto;font-size:14px;transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);color:rgba(255,255,255,0.5)}
+  #panel.collapsed #panel-toggle{transform:rotate(-90deg)}
+  #panel-body{max-height:600px;opacity:1;transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.3s ease}
+  #panel.collapsed #panel-body{max-height:0;opacity:0;pointer-events:none}
 
   .section-label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:10px;margin-top:18px}
   .section-label:first-of-type{margin-top:0}
@@ -79,8 +85,8 @@
 
 <!-- Control Panel -->
 <div id="panel">
-  <h2><span>✦</span> 粒子系统</h2>
-
+  <h2 id="panel-header"><span>✦</span> 粒子系统 <span id="panel-toggle">▼</span></h2>
+  <div id="panel-body">
   <div class="section-label">粒子模型</div>
   <div class="model-grid">
     <button class="model-btn active" data-model="heart"><span class="icon">♥</span>爱心</button>
@@ -119,6 +125,7 @@
     <span id="gesture-text">手势检测未开启</span>
   </div>
   <div class="gesture-values" id="gesture-values"></div>
+  </div>
 </div>
 
 <!-- Fullscreen Button -->
@@ -528,6 +535,11 @@ function stopCamera() {
 // ============================================================
 //  UI Event Handlers
 // ============================================================
+
+// Panel toggle
+document.getElementById('panel-header').addEventListener('click', () => {
+  document.getElementById('panel').classList.toggle('collapsed');
+});
 
 // Model buttons
 document.querySelectorAll('.model-btn').forEach(btn => {
